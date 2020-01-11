@@ -363,14 +363,15 @@ public class ClickHousePreparedStatementTest {
     }
 
     @Test
-    public void testTrailingParameter() throws Exception {
+    public void testTrailingParameterOrderBy() throws Exception {
         String sqlStatement =
             "SELECT 42 AS foo, 23 AS bar "
-          + "ORDER BY foo DESC LIMIT ?, ?";
+          + "ORDER BY ?, ?";
         PreparedStatement stmt = connection.prepareStatement(sqlStatement);
-        stmt.setInt(1, 42);
-        stmt.setInt(2, 23);
+        stmt.setString(1, "foo");
+        stmt.setString(2, "bar");
         ResultSet rs = stmt.executeQuery();
+        Assert.assertTrue(rs.next());
     }
 
     @Test
@@ -587,7 +588,7 @@ public class ClickHousePreparedStatementTest {
           + "\t\tVALUES\n"
           + "(?, ?) , \n\r"
           + "\t(?,?),(?,?)\n");
-        Map<Integer, String> testData = new HashMap<Integer, String>();
+        Map<Integer, String> testData = new HashMap<>();
         testData.put(23, "baz");
         testData.put(42, "bar");
         testData.put(1337, "oof");
