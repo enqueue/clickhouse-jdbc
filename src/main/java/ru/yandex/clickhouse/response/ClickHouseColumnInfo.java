@@ -164,7 +164,7 @@ public final class ClickHouseColumnInfo {
         return arrayBaseType;
     }
 
-    TimeZone getTimeZone() {
+    public TimeZone getTimeZone() {
         return timeZone;
     }
 

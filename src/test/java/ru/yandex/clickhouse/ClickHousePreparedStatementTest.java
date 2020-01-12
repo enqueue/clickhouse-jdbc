@@ -224,7 +224,7 @@ public class ClickHousePreparedStatementTest {
     public void testSetTimeNormal() throws Exception {
         ClickHousePreparedStatement s = createStatement();
         s.setTime(1, new Time(1557168043000L));
-        assertParamMatches(s, "'2019-05-06 21:40:43'");
+        assertParamMatches(s, "'21:40:43'");
     }
 
     @Test
@@ -233,7 +233,7 @@ public class ClickHousePreparedStatementTest {
             TimeZone.getTimeZone("America/Los_Angeles"),
             new ClickHouseProperties());
         s.setTime(1, new Time(1557168043000L));
-        assertParamMatches(s, "'2019-05-06 11:40:43'");
+        assertParamMatches(s, "'11:40:43'");
     }
 
     @Test
@@ -243,7 +243,7 @@ public class ClickHousePreparedStatementTest {
             new ClickHouseProperties());
         Calendar cal = new GregorianCalendar(TimeZone.getTimeZone("Asia/Kuala_Lumpur"));
         s.setTime(1, new Time(1557168043000L), cal);
-        assertParamMatches(s, "'2019-05-07 02:40:43'");
+        assertParamMatches(s, "'02:40:43'");
     }
 
     @Test
@@ -252,7 +252,7 @@ public class ClickHousePreparedStatementTest {
             TimeZone.getTimeZone("America/Los_Angeles"),
             new ClickHouseProperties());
         s.setTime(1, new Time(1557168043000L), null);
-        assertParamMatches(s, "'2019-05-06 11:40:43'");
+        assertParamMatches(s, "'11:40:43'");
     }
 
     @Test
@@ -262,7 +262,7 @@ public class ClickHousePreparedStatementTest {
             new ClickHouseProperties());
         Calendar cal = new GregorianCalendar(TimeZone.getTimeZone("America/Los_Angeles"));
         s.setTime(1, new Time(1557168043000L), cal);
-        assertParamMatches(s, "'2019-05-06 11:40:43'");
+        assertParamMatches(s, "'11:40:43'");
     }
 
     @Test
@@ -316,8 +316,6 @@ public class ClickHousePreparedStatementTest {
         s.setTimestamp(1, new Timestamp(1557168043000L), null);
         assertParamMatches(s, "'2019-05-06 11:40:43'");
     }
-
-
 
     private static void assertParamMatches(ClickHousePreparedStatement stmt, String expected) {
         assertEquals(stmt.asSql(), SQL_STATEMENT + expected + ")");

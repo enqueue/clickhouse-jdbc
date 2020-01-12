@@ -377,7 +377,7 @@ public class ClickHousePreparedStatementTest {
     @Test
     public void testSetTime() throws Exception {
         ClickHousePreparedStatement stmt = (ClickHousePreparedStatement)
-            connection.prepareStatement("SELECT toDateTime(?)");
+            connection.prepareStatement("SELECT ?");
         stmt.setTime(1, Time.valueOf("13:37:42"));
         ResultSet rs = stmt.executeQuery();
         rs.next();
