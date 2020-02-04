@@ -439,9 +439,7 @@ public class ClickHouseResultSet extends AbstractResultSet {
      * @param timeZone
      *            time zone to use when parsing date / date time values
      * @return value interpreted as timestamp as milliseconds since epoch
-     * @deprecated prefer to use regular JDBC API methods, e.g.
-     *             {@link #getTimestamp(int)} or {@link #getObject(int, Class))} using
-     *             {@link Instant}
+     * @deprecated prefer to use regular JDBC API method
      */
     @Deprecated
     public Long getTimestampAsLong(int colNum, TimeZone timeZone) {
@@ -488,9 +486,7 @@ public class ClickHouseResultSet extends AbstractResultSet {
      * @return an array of longs
      * @throws SQLException
      *             if the value cannot be interpreted as {@code long[]}
-     * @deprecated prefer to use regular JDBC API, e.g. via
-     *             {@link #getArray(int)} or simply
-     *             {@link #getObject(int, Class)}
+     * @deprecated prefer to use regular JDBC API
      */
     @Deprecated
     public long[] getLongArray(int colNum) throws SQLException {
