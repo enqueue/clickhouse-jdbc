@@ -8,14 +8,14 @@ import java.util.TimeZone;
 
 import ru.yandex.clickhouse.response.ClickHouseColumnInfo;
 
-public final class ClickHouseSQLTimestampParser extends ClickHouseDateValueParser<Timestamp> {
+final class ClickHouseSQLTimestampParser extends ClickHouseDateValueParser<Timestamp> {
 
     private static final DateTimeFormatter DATE_TIME_FORMATTER_TZ =
         DateTimeFormatter.ofPattern("yyyy-MM-dd['T'][ ]HH:mm:ss[.SSS][XXX]");
 
     private static ClickHouseSQLTimestampParser instance;
 
-    public static ClickHouseSQLTimestampParser getInstance() {
+    static ClickHouseSQLTimestampParser getInstance() {
         if (instance == null) {
             instance = new ClickHouseSQLTimestampParser();
         }

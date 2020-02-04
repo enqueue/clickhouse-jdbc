@@ -25,11 +25,7 @@ final class ClickHouseStringParser extends ClickHouseValueParser<String> {
     public String parse(ByteFragment value, ClickHouseColumnInfo columnInfo,
         TimeZone resultTimeZone) throws SQLException
     {
-        if (value.isNull()) {
-            return null;
-        }
-        String s = value.asString(true);
-        return s.isEmpty() ? null : s;
+        return value.asString(true);
     }
 
 }

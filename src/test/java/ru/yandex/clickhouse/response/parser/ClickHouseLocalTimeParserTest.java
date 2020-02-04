@@ -19,23 +19,24 @@ public class ClickHouseLocalTimeParserTest {
 
     private TimeZone tzBerlin;
     private TimeZone tzLosAngeles;
-
+    private ClickHouseLocalTimeParser parser;
 
     @BeforeClass
     public void setUp() {
         tzBerlin = TimeZone.getTimeZone("Europe/Berlin");
         tzLosAngeles = TimeZone.getTimeZone("America/Los_Angeles");
+        parser = ClickHouseLocalTimeParser.getInstance();
     }
 
     @Test
     public void testParseLocalTimeDate() throws Exception {
         ClickHouseColumnInfo columnInfo = ClickHouseColumnInfo.parse("Date", "col");
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-17"), columnInfo, tzBerlin),
             LocalTime.MIDNIGHT);
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-17"), columnInfo, tzLosAngeles),
             LocalTime.MIDNIGHT);
     }
@@ -44,11 +45,11 @@ public class ClickHouseLocalTimeParserTest {
     public void testParseLocalTimeDateTime() throws Exception {
         ClickHouseColumnInfo columnInfo = ClickHouseColumnInfo.parse("DateTime", "col");
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-17 22:23:24"), columnInfo, tzBerlin),
             LocalTime.of(22, 23, 24));
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-17 22:23:24"), columnInfo, tzLosAngeles),
             LocalTime.of(22, 23, 24));
     }
@@ -61,11 +62,11 @@ public class ClickHouseLocalTimeParserTest {
         ClickHouseColumnInfo columnInfo =
             ClickHouseColumnInfo.parse("DateTime(Asia/Vladivostok)", "col");
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-17 22:23:24"), columnInfo, tzBerlin),
             LocalTime.of(22, 23, 24));
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-17 22:23:24"), columnInfo, tzLosAngeles),
             LocalTime.of(22, 23, 24));
     }
@@ -77,34 +78,34 @@ public class ClickHouseLocalTimeParserTest {
         ClickHouseColumnInfo columnInfo =
             ClickHouseColumnInfo.parse(dataType.name(), "col");
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("222324"), columnInfo, null),
             LocalTime.of(22, 23, 24));
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2223"), columnInfo, null),
             LocalTime.of(22, 23));
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("22"), columnInfo, null),
             LocalTime.of(22, 0));
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("5"), columnInfo, null),
             LocalTime.of(5, 0));
         assertNull(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("0"), columnInfo, null));
 
         try {
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("-42"), columnInfo, null);
             fail();
         } catch (ClickHouseException che) {
             // does not make sense
         }
         try {
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("42"), columnInfo, null);
             fail();
         } catch (ClickHouseException che) {
@@ -117,75 +118,75 @@ public class ClickHouseLocalTimeParserTest {
         ClickHouseColumnInfo columnInfo =
             ClickHouseColumnInfo.parse(ClickHouseDataType.String.name(), "col");
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("22:23:24"), columnInfo, null),
             LocalTime.of(22, 23, 24));
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("22:23:24.123"), columnInfo, null),
             LocalTime.of(22, 23, 24, 123 * 1000 * 1000));
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("22:23"), columnInfo, null),
             LocalTime.of(22, 23));
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("22"), columnInfo, null),
             LocalTime.of(22, 0));
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("0022"), columnInfo, null),
             LocalTime.of(0, 22));
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("002223"), columnInfo, null),
             LocalTime.of(0, 22, 23));
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("00:22:23"), columnInfo, null),
             LocalTime.of(0, 22, 23));
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("000000"), columnInfo, null),
             LocalTime.MIDNIGHT);
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("00:00:00"), columnInfo, null),
             LocalTime.MIDNIGHT);
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("00:00"), columnInfo, null),
             LocalTime.MIDNIGHT);
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("13:37:42"), columnInfo, null),
             LocalTime.of(13, 37, 42));
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("13:37:42.107"), columnInfo, null),
             LocalTime.of(13, 37, 42, 107000000));
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("13:37:42"), columnInfo, tzBerlin),
             LocalTime.of(13, 37, 42));
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("13:37:42"), columnInfo, tzLosAngeles),
             LocalTime.of(13, 37, 42));
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("13:37:42+02:00"), columnInfo, null),
             LocalTime.of(13, 37, 42));
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("13:37:42Z"), columnInfo, null),
             LocalTime.of(13, 37, 42));
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("13:37:42+02:00"), columnInfo, tzLosAngeles),
             LocalTime.of(13, 37, 42));
         assertEquals(
-            ClickHouseLocalTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("13:37:42+02:00"), columnInfo, tzBerlin),
             LocalTime.of(13, 37, 42));
     }

@@ -10,11 +10,11 @@ import java.util.TimeZone;
 
 import ru.yandex.clickhouse.response.ClickHouseColumnInfo;
 
-public final class ClickHouseSQLTimeParser extends ClickHouseDateValueParser<Time> {
+final class ClickHouseSQLTimeParser extends ClickHouseDateValueParser<Time> {
 
     private static ClickHouseSQLTimeParser instance;
 
-    public static ClickHouseSQLTimeParser getInstance() {
+    static ClickHouseSQLTimeParser getInstance() {
         if (instance == null) {
             instance = new ClickHouseSQLTimeParser();
         }

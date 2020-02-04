@@ -4,11 +4,25 @@ import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.net.URL;
 import java.sql.Array;
+import java.sql.Blob;
+import java.sql.Clob;
+import java.sql.Date;
+import java.sql.JDBCType;
+import java.sql.NClob;
+import java.sql.Ref;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
+import java.sql.RowId;
+import java.sql.SQLXML;
+import java.sql.Struct;
+import java.sql.Time;
+import java.sql.Timestamp;
 import java.sql.Types;
-import java.util.Collection;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.TimeZone;
 
 import org.testng.Assert;
@@ -16,7 +30,6 @@ import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import ru.yandex.clickhouse.ClickHouseStatement;
-import ru.yandex.clickhouse.domain.ClickHouseDataTypeTestDataProvider.ClickHouseDataTypeTestData;
 import ru.yandex.clickhouse.settings.ClickHouseProperties;
 
 import static org.testng.Assert.assertFalse;
@@ -40,7 +53,9 @@ public class ClickHouseResultSetTest {
     @Test(dataProvider = "longArrays")
     public void toLongArrayTest(String str, long[] expected) throws Exception {
         Assert.assertEquals(
-                ClickHouseResultSet.toLongArray(ByteFragment.fromString(str)),
+                ClickHouseResultSet.toLongArray(
+                    ByteFragment.fromString(str),
+                    ClickHouseColumnInfo.parse("Array(UInt64)", "columnName")),
                 expected
         );
     }
@@ -310,7 +325,7 @@ public class ClickHouseResultSetTest {
         assertTrue(rs.next());
         assertFalse(rs.isFirst());
     }
-    
+
     @Test
     public void testBeforeFirst() throws Exception {
         String response =
@@ -328,7 +343,7 @@ public class ClickHouseResultSetTest {
         assertFalse(rs.isBeforeFirst());
         is.close();
     }
-    
+
     @Test
     public void testIsAfterLast() throws Exception {
         String response =
@@ -442,7 +457,7 @@ public class ClickHouseResultSetTest {
                 o,
                 "Object null. class name: " + className + ", type name: " + typeName);
             assertTrue(
-                clazz.isAssignableFrom(rs.getObject(i).getClass()),
+                clazz.isInstance(rs.getObject(i)),
                 "Class mismatch. class name: " + className + ", type name: " + typeName +
                     " object class: " + o.getClass().getCanonicalName());
         }
@@ -503,8 +518,43 @@ public class ClickHouseResultSetTest {
         assertFalse(rs.next());
     }
 
-    private static ClickHouseResultSet buildResultSet(InputStream is, int bufferSize, String db, String table, boolean usesWithTotals, ClickHouseStatement statement, TimeZone timezone, ClickHouseProperties properties) throws IOException {
-    	return new ClickHouseResultSet(is, bufferSize, db, table, usesWithTotals, statement, timezone, properties);
+    // this test checks mapping of SQL type to Java class
+    // according to spec appendix table B-3
+    @Test
+    public void testJDBCTableB3() throws Exception {
+        String testData = ClickHouseTypesTestData.buildTestString();
+        ByteArrayInputStream is = new ByteArrayInputStream(testData.getBytes("UTF-8"));
+        ResultSet rs = buildResultSet(is, testData.length(), "db", "table", false, null,
+            TimeZone.getTimeZone("UTC"), props);
+        rs.next();
+        ResultSetMetaData meta = rs.getMetaData();
+        for (int i = 1; i <= meta.getColumnCount(); i++) {
+            if (meta.isNullable(i) == ResultSetMetaData.columnNullable) {
+                continue;
+            }
+            JDBCType jdbcType = JDBCType.valueOf(meta.getColumnType(i));
+            Class<?> clazz = jdbcMappingTableB3().get(jdbcType);
+            // of course, we have one exception :-)
+            if ("UInt64".equals(meta.getColumnTypeName(i))) {
+                clazz = BigInteger.class;
+            }
+            assertNotNull(clazz, "no class mapping for type " + jdbcType);
+            Object o = rs.getObject(i);
+            assertNotNull(o, "null object for column " + i + " jdbcType: " + jdbcType.toString());
+            assertTrue(
+                clazz.isInstance(o),
+                "type: " + jdbcType.toString() + " clazz: " + clazz.getName() +
+                    " vs. object: " + o.getClass().getName());
+        }
+    }
+
+    private static ClickHouseResultSet buildResultSet(InputStream is, int bufferSize, String db,
+        String table, boolean usesWithTotals, ClickHouseStatement statement, TimeZone timezone,
+        ClickHouseProperties properties)
+            throws IOException
+    {
+    	return new ClickHouseResultSet(is, bufferSize, db, table, usesWithTotals, statement,
+    	    timezone, properties);
     }
 
     private static enum ClickHouseTypesTestData {
@@ -605,43 +655,44 @@ public class ClickHouseResultSetTest {
         }
     }
 
-    private static String buildTestString(Collection<ClickHouseDataTypeTestData> testDataTypes) {
-        StringBuilder sb = new StringBuilder();
-        // row 1: column names
-        for (ClickHouseDataTypeTestData t : testDataTypes) {
-            sb.append(t.getTypeName())
-              .append("\t");
-            if (t.isNullableCandidate()) {
-                sb.append("Nullable(")
-                  .append(t.getTypeName())
-                  .append(')')
-                  .append("\t");
-            }
-            if (t.isLowCardinalityCandidate()) {
-                sb.append("LowCardinality(")
-                  .append(t.getTypeName())
-                  .append(')')
-                  .append("\t");
-            }
-        }
-        sb.replace(sb.length(), sb.length(), "\n");
-
-        // row 2: type names
-        sb.append(sb.substring(0, sb.length()));
-
-        // row 3 : example data
-        for (ClickHouseDataTypeTestData t : testDataTypes) {
-            sb.append(t.getTestValue())
-              .append("\t");
-            if (t.isNullableCandidate()) {
-                sb.append("\\N\t");
-            }
-            if (t.isLowCardinalityCandidate()) {
-                sb.append(t.getTestValue())
-                  .append("\t");
-            }
-        }
-        sb.replace(sb.length(), sb.length(), "\n");
-        return sb.toString();
+    private static Map<JDBCType, Class<?>> jdbcMappingTableB3() {
+        Map<JDBCType, Class<?>> map = new HashMap<>();
+        map.put(JDBCType.CHAR,          String.class);
+        map.put(JDBCType.VARCHAR,       String.class);
+        map.put(JDBCType.LONGVARCHAR,   String.class);
+        map.put(JDBCType.NUMERIC,       BigDecimal.class);
+        map.put(JDBCType.DECIMAL,       BigDecimal.class);
+        map.put(JDBCType.BIT,           Boolean.class);
+        map.put(JDBCType.BOOLEAN,       Boolean.class);
+        map.put(JDBCType.TINYINT,       Integer.class);
+        map.put(JDBCType.SMALLINT,      Integer.class);
+        map.put(JDBCType.INTEGER,       Integer.class);
+        map.put(JDBCType.BIGINT,        Long.class);
+        map.put(JDBCType.REAL,          Float.class);
+        map.put(JDBCType.FLOAT,         Double.class); // sic
+        map.put(JDBCType.DOUBLE,        Double.class);
+        map.put(JDBCType.BINARY,        byte[].class);
+        map.put(JDBCType.VARBINARY,     byte[].class);
+        map.put(JDBCType.LONGVARBINARY, byte[].class);
+        map.put(JDBCType.DATE,          Date.class);
+        map.put(JDBCType.TIME,          Time.class);
+        map.put(JDBCType.TIMESTAMP,     Timestamp.class);
+        map.put(JDBCType.DISTINCT,      Object.class);
+        map.put(JDBCType.CLOB,          Clob.class);
+        map.put(JDBCType.BLOB,          Blob.class);
+        map.put(JDBCType.ARRAY,         Array.class);
+        map.put(JDBCType.STRUCT,        Struct.class);
+        map.put(JDBCType.REF,           Ref.class);
+        map.put(JDBCType.DATALINK,      URL.class);
+        map.put(JDBCType.JAVA_OBJECT,   Object.class);
+        map.put(JDBCType.ROWID,         RowId.class);
+        map.put(JDBCType.NCHAR,         String.class);
+        map.put(JDBCType.NVARCHAR,      String.class);
+        map.put(JDBCType.LONGNVARCHAR,  String.class);
+        map.put(JDBCType.NCLOB,         NClob.class);
+        map.put(JDBCType.SQLXML,        SQLXML.class);
+        map.put(JDBCType.OTHER,         Object.class);
+        return map;
     }
+
 }

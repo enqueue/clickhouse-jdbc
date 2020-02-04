@@ -22,22 +22,24 @@ public class ClickHouseSQLTimeParserTest {
 
     private TimeZone tzBerlin;
     private TimeZone tzLosAngeles;
+    private ClickHouseSQLTimeParser parser;
 
     @BeforeClass
     public void setUp() {
         tzBerlin = TimeZone.getTimeZone("Europe/Berlin");
         tzLosAngeles = TimeZone.getTimeZone("America/Los_Angeles");
+        parser = ClickHouseSQLTimeParser.getInstance();
     }
 
     @Test
     public void testParseTimeTimeDate() throws Exception {
         ClickHouseColumnInfo columnInfo = ClickHouseColumnInfo.parse("Date", "col");
         assertEquals(
-            ClickHouseSQLTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-17"), columnInfo, tzBerlin),
             createExpectedTime(LocalTime.MIDNIGHT, tzBerlin));
         assertEquals(
-            ClickHouseSQLTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-17"), columnInfo, tzLosAngeles),
             createExpectedTime(LocalTime.MIDNIGHT, tzLosAngeles));
     }
@@ -46,11 +48,11 @@ public class ClickHouseSQLTimeParserTest {
     public void testParseOffsetTimeDateTime() throws Exception {
         ClickHouseColumnInfo columnInfo = ClickHouseColumnInfo.parse("DateTime", "col");
         assertEquals(
-            ClickHouseSQLTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-17 22:23:24"), columnInfo, tzBerlin),
             createExpectedTime(LocalTime.of(22, 23, 24), tzBerlin));
         assertEquals(
-            ClickHouseSQLTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-17 22:23:24"), columnInfo, tzLosAngeles),
             createExpectedTime(LocalTime.of(22, 23, 24), tzLosAngeles));
     }
@@ -60,15 +62,15 @@ public class ClickHouseSQLTimeParserTest {
         ClickHouseColumnInfo columnInfo =
             ClickHouseColumnInfo.parse("DateTime(Asia/Vladivostok)", "col");
         assertEquals(
-            ClickHouseSQLTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-17 22:23:24"), columnInfo, tzBerlin),
             createExpectedTime(LocalTime.of(13, 23, 24), tzBerlin));
         assertEquals(
-            ClickHouseSQLTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-17 22:23:24"), columnInfo, tzLosAngeles),
             createExpectedTime(LocalTime.of(04, 23, 24), tzLosAngeles));
         assertEquals(
-            ClickHouseSQLTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-17 22:23:24"), columnInfo,
                 TimeZone.getTimeZone("Asia/Vladivostok")),
             createExpectedTime(LocalTime.of(22, 23, 24), TimeZone.getTimeZone("Asia/Vladivostok")));
@@ -81,34 +83,34 @@ public class ClickHouseSQLTimeParserTest {
         ClickHouseColumnInfo columnInfo =
             ClickHouseColumnInfo.parse(dataType.name(), "col");
         assertEquals(
-            ClickHouseSQLTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("222324"), columnInfo, null),
             createExpectedTime(LocalTime.of(22, 23, 24), TimeZone.getDefault()));
         assertEquals(
-            ClickHouseSQLTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2223"), columnInfo, null),
             createExpectedTime(LocalTime.of(22, 23), TimeZone.getDefault()));
         assertEquals(
-            ClickHouseSQLTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("22"), columnInfo, null),
             createExpectedTime(LocalTime.of(22, 0), TimeZone.getDefault()));
         assertEquals(
-            ClickHouseSQLTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("5"), columnInfo, null),
             createExpectedTime(LocalTime.of(5, 0), TimeZone.getDefault()));
         assertNull(
-            ClickHouseSQLTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("0"), columnInfo, null));
 
         try {
-            ClickHouseSQLTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("-42"), columnInfo, null);
             fail();
         } catch (ClickHouseException che) {
             // does not make sense
         }
         try {
-            ClickHouseSQLTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("42"), columnInfo, null);
             fail();
         } catch (ClickHouseException che) {
@@ -121,43 +123,43 @@ public class ClickHouseSQLTimeParserTest {
         ClickHouseColumnInfo columnInfo =
             ClickHouseColumnInfo.parse(ClickHouseDataType.String.name(), "col");
         assertEquals(
-            ClickHouseSQLTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("22:23:24"), columnInfo, null),
             createExpectedTime(LocalTime.of(22, 23, 24), TimeZone.getDefault()));
         assertEquals(
-            ClickHouseSQLTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("22:23:24.123"), columnInfo, null),
             createExpectedTime(LocalTime.of(22, 23, 24, 123 * 1000 * 1000), TimeZone.getDefault()));
         assertEquals(
-            ClickHouseSQLTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("22:23"), columnInfo, null),
             createExpectedTime(LocalTime.of(22, 23), TimeZone.getDefault()));
         assertEquals(
-            ClickHouseSQLTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("22"), columnInfo, null),
             createExpectedTime(LocalTime.of(22, 0), TimeZone.getDefault()));
         assertEquals(
-            ClickHouseSQLTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("0022"), columnInfo, null),
             createExpectedTime(LocalTime.of(0, 22), TimeZone.getDefault()));
         assertEquals(
-            ClickHouseSQLTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("002223"), columnInfo, null),
             createExpectedTime(LocalTime.of(0, 22, 23), TimeZone.getDefault()));
         assertEquals(
-            ClickHouseSQLTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("00:22:23"), columnInfo, null),
             createExpectedTime(LocalTime.of(0, 22, 23), TimeZone.getDefault()));
         assertEquals(
-            ClickHouseSQLTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("000000"), columnInfo, null),
             createExpectedTime(LocalTime.MIDNIGHT, TimeZone.getDefault()));
         assertEquals(
-            ClickHouseSQLTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("00:00:00"), columnInfo, null),
             createExpectedTime(LocalTime.MIDNIGHT, TimeZone.getDefault()));
         assertEquals(
-            ClickHouseSQLTimeParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("00:00"), columnInfo, null),
             createExpectedTime(LocalTime.MIDNIGHT, TimeZone.getDefault()));
     }

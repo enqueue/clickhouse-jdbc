@@ -274,7 +274,7 @@ public class ClickHousePreparedStatementTest {
         rs.next();
         Assert.assertEquals(rs.getMetaData().getColumnType(1), Types.INTEGER);
         Assert.assertEquals(rs.getMetaData().getColumnType(2), Types.BIGINT);
-        Assert.assertEquals(rs.getMetaData().getColumnType(3), Types.FLOAT);
+        Assert.assertEquals(rs.getMetaData().getColumnType(3), Types.REAL);
         Assert.assertEquals(rs.getMetaData().getColumnType(4), Types.VARCHAR);
 
         Assert.assertNull(rs.getObject(1));

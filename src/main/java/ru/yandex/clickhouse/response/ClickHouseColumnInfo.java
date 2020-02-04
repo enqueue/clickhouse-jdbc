@@ -156,12 +156,16 @@ public final class ClickHouseColumnInfo {
         return lowCardinality;
     }
 
-    int getArrayLevel() {
+    public int getArrayLevel() {
         return arrayLevel;
     }
 
     public ClickHouseDataType getArrayBaseType() {
         return arrayBaseType;
+    }
+
+    public ClickHouseDataType getEffectiveClickHouseDataType() {
+        return arrayLevel > 0 ? arrayBaseType : clickHouseDataType;
     }
 
     public TimeZone getTimeZone() {

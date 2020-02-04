@@ -16,23 +16,25 @@ public class ClickHouseSQLTimestampParserTest {
 
     private TimeZone tzLosAngeles;
     private TimeZone tzBerlin;
+    private ClickHouseSQLTimestampParser parser;
 
     @BeforeClass
     public void setUp() {
         tzLosAngeles = TimeZone.getTimeZone("America/Los_Angeles");
         tzBerlin = TimeZone.getTimeZone("Europe/Berlin");
+        parser = ClickHouseSQLTimestampParser.getInstance();
     }
 
     @Test
     public void testParseTimestampDateTime() throws Exception {
         ClickHouseColumnInfo columnInfo = ClickHouseColumnInfo.parse(
             "DateTime", "col");
-        Timestamp inst = ClickHouseSQLTimestampParser.getInstance().parse(
+        Timestamp inst = parser.parse(
             ByteFragment.fromString("2020-01-20 22:23:24"), columnInfo, tzBerlin);
         assertEquals(
             inst.getTime(),
             1579555404000L);
-        inst = ClickHouseSQLTimestampParser.getInstance().parse(
+        inst = parser.parse(
             ByteFragment.fromString("2020-01-20 22:23:24"), columnInfo, tzLosAngeles);
         assertEquals(
             inst.getTime(),
@@ -43,7 +45,7 @@ public class ClickHouseSQLTimestampParserTest {
     public void testParseTimestampDateTimeColumnOverride() throws Exception {
         ClickHouseColumnInfo columnInfo = ClickHouseColumnInfo.parse(
             "DateTime(Europe/Berlin)", "col");
-        Timestamp inst = ClickHouseSQLTimestampParser.getInstance().parse(
+        Timestamp inst = parser.parse(
             ByteFragment.fromString("2020-01-20 22:23:24"), columnInfo, tzLosAngeles);
         assertEquals(
             inst.getTime(),
@@ -54,7 +56,7 @@ public class ClickHouseSQLTimestampParserTest {
     public void testParseTimestampDate() throws Exception {
         ClickHouseColumnInfo columnInfo = ClickHouseColumnInfo.parse(
             "Date", "col");
-        Timestamp inst = ClickHouseSQLTimestampParser.getInstance().parse(
+        Timestamp inst = parser.parse(
             ByteFragment.fromString("2020-01-20"), columnInfo, tzLosAngeles);
         assertEquals(
             inst.getTime(),
@@ -67,12 +69,12 @@ public class ClickHouseSQLTimestampParserTest {
     public void parseTimestampTimestampSeconds(ClickHouseDataType dataType) throws Exception {
         ClickHouseColumnInfo columnInfo = ClickHouseColumnInfo.parse(
             dataType.name(), "col");
-        Timestamp inst = ClickHouseSQLTimestampParser.getInstance().parse(
+        Timestamp inst = parser.parse(
             ByteFragment.fromString("1579507200"), columnInfo, tzLosAngeles);
         assertEquals(
             inst.getTime(),
             1579507200000L);
-        inst = ClickHouseSQLTimestampParser.getInstance().parse(
+        inst = parser.parse(
             ByteFragment.fromString("1579507200"), columnInfo, tzBerlin);
         assertEquals(
             inst.getTime(),
@@ -85,12 +87,12 @@ public class ClickHouseSQLTimestampParserTest {
     public void parseTimestampTimestampMillis(ClickHouseDataType dataType) throws Exception {
         ClickHouseColumnInfo columnInfo = ClickHouseColumnInfo.parse(
             dataType.name(), "col");
-        Timestamp inst = ClickHouseSQLTimestampParser.getInstance().parse(
+        Timestamp inst = parser.parse(
             ByteFragment.fromString("1579507200000"), columnInfo, tzLosAngeles);
         assertEquals(
             inst.getTime(),
             1579507200000L);
-        inst = ClickHouseSQLTimestampParser.getInstance().parse(
+        inst = parser.parse(
             ByteFragment.fromString("1579507200"), columnInfo, tzBerlin);
         assertEquals(
             inst.getTime(),
@@ -101,22 +103,22 @@ public class ClickHouseSQLTimestampParserTest {
     public void testParseTimestampString() throws Exception {
         ClickHouseColumnInfo columnInfo = ClickHouseColumnInfo.parse(
             "String", "col");
-        Timestamp inst = ClickHouseSQLTimestampParser.getInstance().parse(
+        Timestamp inst = parser.parse(
             ByteFragment.fromString("2020-01-20T22:23:24.123"), columnInfo, tzLosAngeles);
         assertEquals(
             inst.getTime(),
             1579587804123L);
-        inst = ClickHouseSQLTimestampParser.getInstance().parse(
+        inst = parser.parse(
             ByteFragment.fromString("2020-01-20T22:23:24.123+01:00"), columnInfo, tzLosAngeles);
         assertEquals(
             inst.getTime(),
             1579555404123L);
-        inst = ClickHouseSQLTimestampParser.getInstance().parse(
+        inst = parser.parse(
             ByteFragment.fromString("2020-01-20 22:23:24.123"), columnInfo, tzLosAngeles);
         assertEquals(
             inst.getTime(),
             1579587804123L);
-        inst = ClickHouseSQLTimestampParser.getInstance().parse(
+        inst = parser.parse(
             ByteFragment.fromString("2020-01-20 22:23:24.123+01:00"), columnInfo, tzLosAngeles);
         assertEquals(
             inst.getTime(),

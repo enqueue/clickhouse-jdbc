@@ -16,23 +16,25 @@ public class ClickHouseZonedDateTimeParserTest {
 
     private TimeZone tzLosAngeles;
     private TimeZone tzBerlin;
+    private ClickHouseZonedDateTimeParser parser;
 
     @BeforeClass
     public void setUp() {
         tzLosAngeles = TimeZone.getTimeZone("America/Los_Angeles");
         tzBerlin = TimeZone.getTimeZone("Europe/Berlin");
+        parser = ClickHouseZonedDateTimeParser.getInstance();
     }
 
     @Test
     public void testParseZonedDateTimeDateTime() throws Exception {
         ClickHouseColumnInfo columnInfo = ClickHouseColumnInfo.parse(
             "DateTime", "col");
-        ZonedDateTime inst = ClickHouseZonedDateTimeParser.getInstance().parse(
+        ZonedDateTime inst = parser.parse(
             ByteFragment.fromString("2020-01-20 22:23:24"), columnInfo, tzBerlin);
         assertEquals(
             inst.toInstant().getEpochSecond(),
             1579555404);
-        inst = ClickHouseZonedDateTimeParser.getInstance().parse(
+        inst = parser.parse(
             ByteFragment.fromString("2020-01-20 22:23:24"), columnInfo, tzLosAngeles);
         assertEquals(
             inst.toInstant().getEpochSecond(),
@@ -43,7 +45,7 @@ public class ClickHouseZonedDateTimeParserTest {
     public void testParseZonedDateTimeDateTimeColumnOverride() throws Exception {
         ClickHouseColumnInfo columnInfo = ClickHouseColumnInfo.parse(
             "DateTime(Europe/Berlin)", "col");
-        ZonedDateTime inst = ClickHouseZonedDateTimeParser.getInstance().parse(
+        ZonedDateTime inst = parser.parse(
             ByteFragment.fromString("2020-01-20 22:23:24"), columnInfo, tzLosAngeles);
         assertEquals(
             inst.toInstant().getEpochSecond(),
@@ -54,7 +56,7 @@ public class ClickHouseZonedDateTimeParserTest {
     public void testParseZonedDateTimeDate() throws Exception {
         ClickHouseColumnInfo columnInfo = ClickHouseColumnInfo.parse(
             "Date", "col");
-        ZonedDateTime inst = ClickHouseZonedDateTimeParser.getInstance().parse(
+        ZonedDateTime inst = parser.parse(
             ByteFragment.fromString("2020-01-20"), columnInfo, tzLosAngeles);
         assertEquals(
             inst.toInstant().getEpochSecond(),
@@ -67,12 +69,12 @@ public class ClickHouseZonedDateTimeParserTest {
     public void parseZonedDateTimeTimestampSeconds(ClickHouseDataType dataType) throws Exception {
         ClickHouseColumnInfo columnInfo = ClickHouseColumnInfo.parse(
             dataType.name(), "col");
-        ZonedDateTime inst = ClickHouseZonedDateTimeParser.getInstance().parse(
+        ZonedDateTime inst = parser.parse(
             ByteFragment.fromString("1579507200"), columnInfo, tzLosAngeles);
         assertEquals(
             inst.toInstant().getEpochSecond(),
             1579507200);
-        inst = ClickHouseZonedDateTimeParser.getInstance().parse(
+        inst = parser.parse(
             ByteFragment.fromString("1579507200"), columnInfo, tzBerlin);
         assertEquals(
             inst.toInstant().getEpochSecond(),
@@ -85,12 +87,12 @@ public class ClickHouseZonedDateTimeParserTest {
     public void parseZonedDateTimeTimestampMillis(ClickHouseDataType dataType) throws Exception {
         ClickHouseColumnInfo columnInfo = ClickHouseColumnInfo.parse(
             dataType.name(), "col");
-        ZonedDateTime inst = ClickHouseZonedDateTimeParser.getInstance().parse(
+        ZonedDateTime inst = parser.parse(
             ByteFragment.fromString("1579507200000"), columnInfo, tzLosAngeles);
         assertEquals(
             inst.toInstant().getEpochSecond(),
             1579507200);
-        inst = ClickHouseZonedDateTimeParser.getInstance().parse(
+        inst = parser.parse(
             ByteFragment.fromString("1579507200"), columnInfo, tzBerlin);
         assertEquals(
             inst.toInstant().getEpochSecond(),
@@ -101,12 +103,12 @@ public class ClickHouseZonedDateTimeParserTest {
     public void testParseZonedDateTimeString() throws Exception {
         ClickHouseColumnInfo columnInfo = ClickHouseColumnInfo.parse(
             "String", "col");
-        ZonedDateTime inst = ClickHouseZonedDateTimeParser.getInstance().parse(
+        ZonedDateTime inst = parser.parse(
             ByteFragment.fromString("2020-01-20T22:23:24.123"), columnInfo, tzLosAngeles);
         assertEquals(
             inst.toInstant().getEpochSecond(),
             1579587804);
-        inst = ClickHouseZonedDateTimeParser.getInstance().parse(
+        inst = parser.parse(
             ByteFragment.fromString("2020-01-20T22:23:24.123+01:00"), columnInfo, tzLosAngeles);
         assertEquals(
             inst.toInstant().getEpochSecond(),

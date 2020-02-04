@@ -13,9 +13,7 @@ import java.sql.Statement;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.time.format.DateTimeFormatter;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -28,26 +26,18 @@ import ru.yandex.clickhouse.ClickHouseArray;
 import ru.yandex.clickhouse.ClickHouseStatement;
 import ru.yandex.clickhouse.domain.ClickHouseDataType;
 import ru.yandex.clickhouse.except.ClickHouseExceptionSpecifier;
-import ru.yandex.clickhouse.response.parser.ClickHouseSQLDateParser;
-import ru.yandex.clickhouse.response.parser.ClickHouseSQLTimeParser;
-import ru.yandex.clickhouse.response.parser.ClickHouseSQLTimestampParser;
+import ru.yandex.clickhouse.except.ClickHouseUnknownException;
 import ru.yandex.clickhouse.response.parser.ClickHouseValueParser;
 import ru.yandex.clickhouse.settings.ClickHouseProperties;
-
-import static ru.yandex.clickhouse.response.ByteFragmentUtils.parseArray;
+import ru.yandex.clickhouse.util.ClickHouseArrayUtil;
 
 
 public class ClickHouseResultSet extends AbstractResultSet {
 
     private final static long[] EMPTY_LONG_ARRAY = new long[0];
-    private static final String DATE_TIME_PATTERN = "yyyy-MM-dd HH:mm:ss";
-    private static final String DATE_PATTERN = "yyyy-MM-dd";
 
     private final TimeZone dateTimeTimeZone;
     private final TimeZone dateTimeZone;
-    private final SimpleDateFormat dateTimeFormat = new SimpleDateFormat(DATE_TIME_PATTERN);
-    private final SimpleDateFormat dateFormat = new SimpleDateFormat(DATE_PATTERN);
-    private final DateTimeFormatter dateTimeFormatter = DateTimeFormatter.ofPattern(DATE_TIME_PATTERN);
 
     private final StreamSplitter bis;
 
@@ -99,8 +89,6 @@ public class ClickHouseResultSet extends AbstractResultSet {
         this.dateTimeZone = properties.isUseServerTimeZoneForDates()
             ? timeZone
             : TimeZone.getDefault();
-        dateTimeFormat.setTimeZone(dateTimeTimeZone);
-        dateFormat.setTimeZone(dateTimeZone);
         bis = new StreamSplitter(is, (byte) 0x0A, bufferSize);  ///   \n
         ByteFragment headerFragment = bis.next();
         if (headerFragment == null) {
@@ -133,6 +121,17 @@ public class ClickHouseResultSet extends AbstractResultSet {
         return c;
     }
 
+    /**
+     * Check if there is another row
+     *
+     * @return {@code true} if this result set has another row after the current
+     *         cursor position, {@code false} else
+     * @throws SQLException
+     *             if something goes wrong
+     * @deprecated prefer to use JDBC API methods, for example {@link #isLast()}
+     *             or simply looping using {@code while (rs.next())}
+     */
+    @Deprecated
     public boolean hasNext() throws SQLException {
         if (nextLine == null && !lastReached) {
             try {
@@ -205,7 +204,7 @@ public class ClickHouseResultSet extends AbstractResultSet {
         return onSeparatorRow;
     }
 
-    private void checkValues(List<ClickHouseColumnInfo> columns, ByteFragment[] values,
+    private static void checkValues(List<ClickHouseColumnInfo> columns, ByteFragment[] values,
         ByteFragment fragment) throws SQLException
     {
         if (columns.size() != values.length) {
@@ -241,6 +240,7 @@ public class ClickHouseResultSet extends AbstractResultSet {
         this.next();
     }
 
+    // this method is mocked in a test, do not make it final :-)
     List<ClickHouseColumnInfo> getColumns() {
         return Collections.unmodifiableList(columns);
     }
@@ -249,10 +249,6 @@ public class ClickHouseResultSet extends AbstractResultSet {
     public ResultSetMetaData getMetaData() throws SQLException {
         return new ClickHouseResultSetMetaData(this);
     }
-
-
-    /////////////////////////////////////////////////////////
-
 
     @Override
     public boolean wasNull() throws SQLException {
@@ -263,22 +259,22 @@ public class ClickHouseResultSet extends AbstractResultSet {
     }
 
     @Override
-    public int getInt(String column) {
+    public int getInt(String column) throws SQLException {
         return getInt(findColumn(column));
     }
 
     @Override
-    public boolean getBoolean(String column) {
+    public boolean getBoolean(String column) throws SQLException {
         return getBoolean(findColumn(column));
     }
 
     @Override
-    public long getLong(String column) {
+    public long getLong(String column) throws SQLException {
         return getLong(findColumn(column));
     }
 
     @Override
-    public String getString(String column) {
+    public String getString(String column) throws SQLException {
         return getString(findColumn(column));
     }
 
@@ -302,14 +298,14 @@ public class ClickHouseResultSet extends AbstractResultSet {
         TimeZone tz = cal.getTimeZone() != null
             ? cal.getTimeZone()
             : dateTimeTimeZone;
-        return ClickHouseSQLTimestampParser.getInstance().parse(
+        return ClickHouseValueParser.getParser(Timestamp.class).parse(
             getValue(columnIndex),
-            columns.get(columnIndex -1),
+            getColumnInfo(columnIndex),
             tz);
     }
 
     @Override
-    public short getShort(String column) {
+    public short getShort(String column) throws SQLException {
         return getShort(findColumn(column));
     }
 
@@ -319,13 +315,13 @@ public class ClickHouseResultSet extends AbstractResultSet {
     }
 
     @Override
-    public long[] getLongArray(String column) {
+    public long[] getLongArray(String column) throws SQLException {
         return getLongArray(findColumn(column));
     }
 
     @Override
     public Array getArray(int columnIndex) throws SQLException {
-        ClickHouseColumnInfo colInfo = columns.get(columnIndex - 1);
+        ClickHouseColumnInfo colInfo = getColumnInfo(columnIndex);
         if (colInfo.getClickHouseDataType() != ClickHouseDataType.Array) {
             throw new SQLException("Column not an array");
         }
@@ -333,37 +329,25 @@ public class ClickHouseResultSet extends AbstractResultSet {
         final Object array;
         switch (colInfo.getArrayBaseType()) {
             case Date :
-                array = parseArray(
+                array = ClickHouseArrayUtil.parseArray(
                     getValue(columnIndex),
-                    colInfo.getArrayBaseType().getJavaClass(),
                     properties.isUseObjectsInArrays(),
-                    dateFormat,
-                    colInfo.getArrayLevel()
-                );
-                break;
-            case DateTime :
-                TimeZone timeZone = colInfo.getTimeZone() != null
-                    ? colInfo.getTimeZone()
-                    : dateTimeTimeZone;
-                dateTimeFormat.setTimeZone(timeZone);
-                array = parseArray(
-                    getValue(columnIndex),
-                    colInfo.getArrayBaseType().getJavaClass(),
-                    properties.isUseObjectsInArrays(),
-                    dateTimeFormat,
-                    colInfo.getArrayLevel()
+                    dateTimeZone,
+                    colInfo
                 );
                 break;
             default :
-                array = parseArray(
+                TimeZone timeZone = colInfo.getTimeZone() != null
+                    ? colInfo.getTimeZone()
+                    : dateTimeTimeZone;
+                array = ClickHouseArrayUtil.parseArray(
                     getValue(columnIndex),
-                    colInfo.getArrayBaseType().getJavaClass(),
                     properties.isUseObjectsInArrays(),
-                    colInfo.getArrayLevel()
+                    timeZone,
+                    colInfo
                 );
                 break;
         }
-
         return new ClickHouseArray(colInfo.getArrayBaseType(), array);
     }
 
@@ -398,23 +382,27 @@ public class ClickHouseResultSet extends AbstractResultSet {
     }
 
     @Override
-    public String getString(int colNum) {
-        return toString(getValue(colNum));
+    public String getString(int colNum) throws SQLException {
+        return ClickHouseValueParser.getParser(String.class)
+            .parse(getValue(colNum), getColumnInfo(colNum), null);
     }
 
     @Override
-    public int getInt(int colNum) {
-        return ByteFragmentUtils.parseInt(getValue(colNum));
+    public int getInt(int colNum) throws SQLException {
+        return ClickHouseValueParser.parseInt(
+            getValue(colNum), getColumnInfo(colNum));
     }
 
     @Override
-    public boolean getBoolean(int colNum) {
-        return toBoolean(getValue(colNum));
+    public boolean getBoolean(int colNum) throws SQLException {
+        return ClickHouseValueParser.parseBoolean(
+            getValue(colNum), getColumnInfo(colNum));
     }
 
     @Override
-    public long getLong(int colNum) {
-        return ByteFragmentUtils.parseLong(getValue(colNum));
+    public long getLong(int colNum) throws SQLException {
+        return ClickHouseValueParser.parseLong(
+            getValue(colNum), getColumnInfo(colNum));
     }
 
     @Override
@@ -423,13 +411,19 @@ public class ClickHouseResultSet extends AbstractResultSet {
     }
 
     /**
+     * Tries to parse the value as a timestamp using the connection time zone if
+     * applicable and return its representation as milliseconds since epoch
      *
      * @param colNum
-     * @return
+     *            column number
+     * @return timestamp value as milliseconds since epoch
+     * @deprecated prefer to use regular JDBC API methods, e.g.
+     *             {@link #getTimestamp(int)} or {@link #getObject(int, Class)}
+     *             using {@link Instant}
      */
     @Deprecated
     public Long getTimestampAsLong(int colNum) {
-        ClickHouseColumnInfo info = columns.get(colNum - 1);
+        ClickHouseColumnInfo info = getColumnInfo(colNum);
         TimeZone timeZone = info.getTimeZone() != null
             ? info.getTimeZone()
             : dateTimeTimeZone;
@@ -437,10 +431,17 @@ public class ClickHouseResultSet extends AbstractResultSet {
     }
 
     /**
+     * Tries to parse the value as a timestamp and return its representation as
+     * milliseconds since epoch
      *
      * @param colNum
+     *            the column number
      * @param timeZone
-     * @return
+     *            time zone to use when parsing date / date time values
+     * @return value interpreted as timestamp as milliseconds since epoch
+     * @deprecated prefer to use regular JDBC API methods, e.g.
+     *             {@link #getTimestamp(int)} or {@link #getObject(int, Class))} using
+     *             {@link Instant}
      */
     @Deprecated
     public Long getTimestampAsLong(int colNum, TimeZone timeZone) {
@@ -449,25 +450,28 @@ public class ClickHouseResultSet extends AbstractResultSet {
             return null;
         }
         try {
-            dateTimeFormat.setTimeZone(timeZone);
-            return Long.valueOf(dateTimeFormat.parse(value.asString()).getTime());
-        } catch (ParseException e) {
-            throw new RuntimeException(e);
+            Instant instant = ClickHouseValueParser.getParser(Instant.class)
+                .parse(value, getColumnInfo(colNum), timeZone);
+            return Long.valueOf(instant.toEpochMilli());
+        } catch (SQLException sqle) {
+            throw new RuntimeException(sqle);
         }
     }
 
     @Override
     public Timestamp getTimestamp(int columnIndex) throws SQLException {
-        ByteFragment f = getValue(columnIndex);
-        if (f.isNull()) {
+        ByteFragment value = getValue(columnIndex);
+        if (value.isNull()) {
             return null;
         }
-        return ClickHouseSQLTimestampParser.getInstance().parse(f, columns.get(columnIndex -1), dateTimeTimeZone);
+        return ClickHouseValueParser.getParser(Timestamp.class).parse(
+            value, getColumnInfo(columnIndex), dateTimeTimeZone);
     }
 
     @Override
-    public short getShort(int colNum) {
-        return toShort(getValue(colNum));
+    public short getShort(int colNum) throws SQLException {
+        return ClickHouseValueParser.parseShort(
+            getValue(colNum), getColumnInfo(colNum));
     }
 
     @Override
@@ -475,29 +479,34 @@ public class ClickHouseResultSet extends AbstractResultSet {
         return toByte(getValue(colNum));
     }
 
-    public long[] getLongArray(int colNum) {
-        return toLongArray(getValue(colNum));
+    /**
+     * Parse the value in current row at column index {@code colNum} as an array
+     * of long
+     *
+     * @param colNum
+     *            column number
+     * @return an array of longs
+     * @throws SQLException
+     *             if the value cannot be interpreted as {@code long[]}
+     * @deprecated prefer to use regular JDBC API, e.g. via
+     *             {@link #getArray(int)} or simply
+     *             {@link #getObject(int, Class)}
+     */
+    @Deprecated
+    public long[] getLongArray(int colNum) throws SQLException {
+        return toLongArray(getValue(colNum), getColumnInfo(colNum));
     }
 
     @Override
     public float getFloat(int columnIndex) throws SQLException {
-        return (float) getDouble(columnIndex);
+        return ClickHouseValueParser.parseFloat(
+            getValue(columnIndex), getColumnInfo(columnIndex));
     }
 
     @Override
     public double getDouble(int columnIndex) throws SQLException {
-        String string = getString(columnIndex);
-        if (string == null){
-            return 0;
-        } else if (string.equals("nan")) {
-            return Double.NaN;
-        } else if (string.equals("+inf") || string.equals("inf")) {
-            return Double.POSITIVE_INFINITY;
-        } else if (string.equals("-inf")) {
-            return Double.NEGATIVE_INFINITY;
-        } else {
-            return Double.parseDouble(string);
-        }
+        return ClickHouseValueParser.parseDouble(
+            getValue(columnIndex), getColumnInfo(columnIndex));
     }
 
     @Override
@@ -507,22 +516,17 @@ public class ClickHouseResultSet extends AbstractResultSet {
 
     @Override
     public Date getDate(int columnIndex) throws SQLException {
-        ByteFragment value = getValue(columnIndex);
-        if (value.isNull() || value.asString().equals("0000-00-00")) {
-            return null;
-        }
-        return ClickHouseSQLDateParser.getInstance().parse(value, columns.get(columnIndex -1), dateTimeZone);
+        return ClickHouseValueParser.getParser(Date.class).parse(
+            getValue(columnIndex),
+            getColumnInfo(columnIndex),
+            dateTimeZone);
     }
 
     @Override
     public Time getTime(int columnIndex) throws SQLException {
-        ByteFragment f = getValue(columnIndex);
-        if (f.isNull()) {
-            return null;
-        }
-        return ClickHouseSQLTimeParser.getInstance().parse(
-            f,
-            columns.get(columnIndex -1),
+        return ClickHouseValueParser.getParser(Time.class).parse(
+            getValue(columnIndex),
+            getColumnInfo(columnIndex),
             dateTimeTimeZone);
     }
 
@@ -532,31 +536,33 @@ public class ClickHouseResultSet extends AbstractResultSet {
             if (getValue(columnIndex).isNull()) {
                 return null;
             }
-            ClickHouseDataType chType = columns.get(columnIndex - 1).getClickHouseDataType();
+            ClickHouseDataType chType = getColumnInfo(columnIndex).getClickHouseDataType();
             int type = chType.getSqlType();
             switch (type) {
                 case Types.BIGINT:
-                    if (!chType.isSigned()){
-                        String stringVal = getString(columnIndex);
-                        return new BigInteger(stringVal);
+                    if (chType == ClickHouseDataType.UInt64) {
+                        return getObject(columnIndex, BigInteger.class);
                     }
-                    return getLong(columnIndex);
+                    return getObject(columnIndex, Long.class);
                 case Types.INTEGER:
                     if (!chType.isSigned()){
-                        return getLong(columnIndex);
+                        return getObject(columnIndex, Long.class);
                     }
-                    return getInt(columnIndex);
+                    return getObject(columnIndex, Integer.class);
                 case Types.TINYINT:
                 case Types.SMALLINT:
-                    return getInt(columnIndex);
+                    return getObject(columnIndex, Integer.class);
                 case Types.VARCHAR:     return getString(columnIndex);
-                case Types.FLOAT:       return getFloat(columnIndex);
-                case Types.DOUBLE:      return getDouble(columnIndex);
+                case Types.REAL:        return getObject(columnIndex, Float.class);
+                case Types.FLOAT:
+                case Types.DOUBLE:      return getObject(columnIndex, Double.class);
                 case Types.DATE:        return getDate(columnIndex);
                 case Types.TIMESTAMP:   return getTimestamp(columnIndex);
                 case Types.BLOB:        return getString(columnIndex);
                 case Types.ARRAY:       return getArray(columnIndex);
                 case Types.DECIMAL:     return getBigDecimal(columnIndex);
+                default:
+                    // do not return
             }
             switch (chType) {
                 case UUID :
@@ -565,7 +571,9 @@ public class ClickHouseResultSet extends AbstractResultSet {
                     return getString(columnIndex);
             }
         } catch (Exception e) {
-            throw new RuntimeException("Parse exception: " + values[columnIndex - 1].toString(), e);
+            throw new ClickHouseUnknownException(
+                "Parse exception: " + values[columnIndex - 1].toString(),
+                e);
         }
     }
 
@@ -578,20 +586,6 @@ public class ClickHouseResultSet extends AbstractResultSet {
         return Byte.parseByte(value.asString());
     }
 
-    private static short toShort(ByteFragment value) {
-        if (value.isNull()) {
-            return 0;
-        }
-        return Short.parseShort(value.asString());
-    }
-
-    private static boolean toBoolean(ByteFragment value) {
-        if (value.isNull()) {
-            return false;
-        }
-        return "1".equals(value.asString());    // 1 or 0 there
-    }
-
     private static byte[] toBytes(ByteFragment value) {
         if (value.isNull()) {
             return null;
@@ -599,11 +593,9 @@ public class ClickHouseResultSet extends AbstractResultSet {
         return value.unescape();
     }
 
-    private static String toString(ByteFragment value) {
-        return value.asString(true);
-    }
-
-    static long[] toLongArray(ByteFragment value) {
+    static long[] toLongArray(ByteFragment value, ClickHouseColumnInfo columnInfo)
+        throws SQLException
+    {
         if (value.isNull()) {
             return null;
         }
@@ -617,7 +609,7 @@ public class ClickHouseResultSet extends AbstractResultSet {
         ByteFragment[] values = trim.split((byte) ',');
         long[] result = new long[values.length];
         for (int i = 0; i < values.length; i++) {
-            result[i] = ByteFragmentUtils.parseLong(values[i]);
+            result[i] = ClickHouseValueParser.parseLong(values[i], columnInfo);
         }
         return result;
     }
@@ -667,76 +659,13 @@ public class ClickHouseResultSet extends AbstractResultSet {
         return columns.get(colNum - 1);
     }
 
-    @SuppressWarnings("unchecked")
     @Override
     public <T> T getObject(int columnIndex, Class<T> type) throws SQLException {
         TimeZone tz = Date.class.equals(type)
             ? dateTimeZone
             : dateTimeTimeZone;
-        return (T) ClickHouseValueParser.getParser(type)
+        return ClickHouseValueParser.getParser(type)
             .parse(getValue(columnIndex), getColumnInfo(columnIndex), tz);
-
-//        if(type.equals(UUID.class)) {
-//            return (T) UUID.fromString(getString(columnIndex));
-//        } else if (type.equals(String.class)) {
-//            return (T) getString(columnIndex);
-//        } else if (type.equals(LocalDate.class)) {
-//            String s = getString(columnIndex);
-//            if (s != null && !s.isEmpty()) {
-//                return (T) LocalDate.parse(s);
-//            }
-//            return null;
-//        } else if (type.equals(LocalTime.class)) {
-//            String s = getString(columnIndex);
-//            if (s != null && !s.isEmpty()) {
-//                return (T) LocalTime.parse(s);
-//            }
-//            return null;
-//        } else if (type.equals(LocalDateTime.class)) {
-//            String s = getString(columnIndex);
-//            if (s != null && !s.isEmpty()) {
-//                return (T) LocalDateTime.parse(s, dateTimeFormatter);
-//            }
-//            return null;
-//        } else if (type.equals(ZonedDateTime.class)) {
-//            String s = getString(columnIndex);
-//            if (s != null && !s.isEmpty()) {
-//                return (T) ZonedDateTime.parse(
-//                    s,
-//                    dateTimeFormatter.withZone(dateTimeTimeZone.toZoneId()));
-//            }
-//            return null;
-//        } else if (type.equals(OffsetDateTime.class)) {
-//            String s = getString(columnIndex);
-//            if (s != null && !s.isEmpty()) {
-//                OffsetDateTime.parse(
-//                    s,
-//                    dateTimeFormatter.withZone(dateTimeTimeZone.toZoneId()));
-//            }
-//            return null;
-//        } else if (type.equals(OffsetTime.class)) {
-//            LocalTime lt = getObject(columnIndex, LocalTime.class);
-//            if (lt != null) {
-//                return (T) OffsetTime.of(
-//                    lt,
-//                    dateTimeTimeZone.toZoneId().getRules().getOffset(Instant.now())); // what's better?
-//            }
-//            return null;
-//        } else if (type.equals(Instant.class)) {
-//            String s = getString(columnIndex);
-//            if (s != null && !s.isEmpty()) {
-//                if (getMetaData().getColumnTypeName(columnIndex).startsWith("DateTime")) {
-//                    ZonedDateTime z = ZonedDateTime.parse(
-//                        s,
-//                        dateTimeFormatter.withZone(dateTimeTimeZone.toZoneId()));
-//                    return (T) z.toInstant();
-//                }
-//                return (T) Instant.ofEpochSecond(Long.parseLong(s));
-//            }
-//            return null;
-//        } else {
-//            throw new SQLException("Not implemented for type=" + type.toString());
-//        }
     }
 
     @Override
@@ -744,37 +673,40 @@ public class ClickHouseResultSet extends AbstractResultSet {
         return getObject(findColumn(columnLabel), type);
     }
 
+    /**
+     * Retrieve the results in &quot;raw&quot; form.
+     *
+     * @return the results as an array of {@link ByteFragment}s
+     * @deprecated prefer to use regular JDBC API to retrieve the results
+     */
+    @Deprecated
     public ByteFragment[] getValues() {
         return values;
     }
 
     @Override
-    public BigDecimal getBigDecimal(String columnLabel)  {
+    public BigDecimal getBigDecimal(String columnLabel)  throws SQLException {
         return getBigDecimal(findColumn(columnLabel));
     }
 
     @Override
-    public BigDecimal getBigDecimal(int columnIndex)  {
-        String string = getString(columnIndex);
-        if (string == null) {
-            return null;
-        }
-        return new BigDecimal(string);
+    public BigDecimal getBigDecimal(int columnIndex) throws SQLException {
+        return ClickHouseValueParser.getParser(BigDecimal.class)
+            .parse(getValue(columnIndex), getColumnInfo(columnIndex), null);
     }
 
     @Override
-    public BigDecimal getBigDecimal(String columnLabel, int scale)  {
+    public BigDecimal getBigDecimal(String columnLabel, int scale) throws SQLException {
         return getBigDecimal(findColumn(columnLabel), scale);
     }
 
     @Override
-    public BigDecimal getBigDecimal(int columnIndex, int scale)  {
-        String string = getString(columnIndex);
-        if (string == null) {
-            return null;
-        }
-        BigDecimal result = new BigDecimal(string);
-        return result.setScale(scale, RoundingMode.HALF_UP);
+    public BigDecimal getBigDecimal(int columnIndex, int scale) throws SQLException {
+        BigDecimal result = ClickHouseValueParser.getParser(BigDecimal.class)
+            .parse(getValue(columnIndex), getColumnInfo(columnIndex), null);
+        return result != null
+            ? result.setScale(scale, RoundingMode.HALF_UP)
+            : null;
     }
 
     @Override
@@ -791,8 +723,8 @@ public class ClickHouseResultSet extends AbstractResultSet {
     @Override
     public String toString() {
         return "ClickHouseResultSet{" +
-            "sdf=" + dateTimeFormat +
-            ", dateFormat=" + dateFormat +
+            "dateTimeTimeZone=" + dateTimeTimeZone.toString() +
+            ", dateTimeZone=" + dateTimeZone.toString() +
             ", bis=" + bis +
             ", db='" + db + '\'' +
             ", table='" + table + '\'' +
@@ -813,6 +745,5 @@ public class ClickHouseResultSet extends AbstractResultSet {
         }
         return sb.substring(0, sb.length() - 1);
     }
-
 
 }

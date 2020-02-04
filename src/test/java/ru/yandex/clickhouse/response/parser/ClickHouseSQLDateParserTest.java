@@ -23,11 +23,13 @@ public class ClickHouseSQLDateParserTest {
 
     private TimeZone tzLosAngeles;
     private TimeZone tzBerlin;
+    private ClickHouseSQLDateParser parser;
 
     @BeforeClass
     public void setUp() {
         tzLosAngeles = TimeZone.getTimeZone("America/Los_Angeles");
         tzBerlin = TimeZone.getTimeZone("Europe/Berlin");
+        parser = ClickHouseSQLDateParser.getInstance();
     }
 
     @Test
@@ -35,7 +37,7 @@ public class ClickHouseSQLDateParserTest {
         ClickHouseColumnInfo columnInfo =
             ClickHouseColumnInfo.parse("Date", "col");
         try {
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 null, columnInfo, tzBerlin);
             fail();
         } catch (NullPointerException npe) {
@@ -48,7 +50,7 @@ public class ClickHouseSQLDateParserTest {
         ClickHouseColumnInfo columnInfo =
             ClickHouseColumnInfo.parse("Date", "col");
         assertEquals(
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-12"), columnInfo, null),
             new Date(
                 LocalDate.of(2020, 1, 12)
@@ -56,7 +58,7 @@ public class ClickHouseSQLDateParserTest {
                     .toInstant()
                     .toEpochMilli()));
         assertEquals(
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-12"), columnInfo, tzLosAngeles),
             new Date(
                 LocalDate.of(2020, 1, 12)
@@ -65,7 +67,7 @@ public class ClickHouseSQLDateParserTest {
                     .toEpochMilli()));
         // local stays local
         assertEquals(
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-12"), columnInfo, tzBerlin),
             new Date(
                 LocalDate.of(2020, 1, 12)
@@ -73,7 +75,7 @@ public class ClickHouseSQLDateParserTest {
                     .toInstant()
                     .toEpochMilli()));
         assertNull(
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("0000-00-00"), columnInfo, tzLosAngeles));
     }
 
@@ -82,7 +84,7 @@ public class ClickHouseSQLDateParserTest {
         ClickHouseColumnInfo columnInfo =
             ClickHouseColumnInfo.parse("Nullable(Date)", "col");
         assertNull(
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("0000-00-00"), columnInfo, tzLosAngeles));
     }
 
@@ -91,7 +93,7 @@ public class ClickHouseSQLDateParserTest {
         ClickHouseColumnInfo columnInfo =
             ClickHouseColumnInfo.parse("DateTime", "col");
         assertEquals(
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-12 01:02:03"), columnInfo, null),
             new Date(
                 LocalDate.of(2020, 1, 12)
@@ -99,7 +101,7 @@ public class ClickHouseSQLDateParserTest {
                     .toInstant()
                     .toEpochMilli()));
         assertEquals(
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-12 22:23:24"), columnInfo, tzLosAngeles),
             new Date(
                 LocalDate.of(2020, 1, 12)
@@ -107,7 +109,7 @@ public class ClickHouseSQLDateParserTest {
                     .toInstant()
                     .toEpochMilli()));
         assertEquals(
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-12 22:23:24"), columnInfo, tzBerlin),
             new Date(
                 LocalDate.of(2020, 1, 12)
@@ -115,7 +117,7 @@ public class ClickHouseSQLDateParserTest {
                     .toInstant()
                     .toEpochMilli()));
         assertNull(
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("0000-00-00 00:00:00"), columnInfo, null));
     }
 
@@ -124,7 +126,7 @@ public class ClickHouseSQLDateParserTest {
         ClickHouseColumnInfo columnInfo =
             ClickHouseColumnInfo.parse("DateTime(Europe/Berlin)", "col");
         assertEquals(
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-12 01:02:03"), columnInfo, null),
             new Date(
                 LocalDate.of(2020, 1, 12)
@@ -132,7 +134,7 @@ public class ClickHouseSQLDateParserTest {
                     .toInstant()
                     .toEpochMilli()));
         assertEquals(
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-12 22:23:24"), columnInfo, tzLosAngeles),
             new Date(
                 LocalDate.of(2020, 1, 12)
@@ -140,7 +142,7 @@ public class ClickHouseSQLDateParserTest {
                     .toInstant()
                     .toEpochMilli()));
         assertEquals(
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-12 22:23:24"), columnInfo, tzBerlin),
             new Date(
                 LocalDate.of(2020, 1, 12)
@@ -148,7 +150,7 @@ public class ClickHouseSQLDateParserTest {
                     .toInstant()
                     .toEpochMilli()));
         assertNull(
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("0000-00-00 00:00:00"), columnInfo, null));
     }
 
@@ -157,7 +159,7 @@ public class ClickHouseSQLDateParserTest {
         ClickHouseColumnInfo columnInfo =
             ClickHouseColumnInfo.parse("DateTime(Asia/Vladivostok)", "col");
         assertEquals(
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-12 01:02:03"), columnInfo, null),
             new Date(
                 LocalDate.of(2020, 1, 11)
@@ -165,7 +167,7 @@ public class ClickHouseSQLDateParserTest {
                     .toInstant()
                     .toEpochMilli()));
         assertEquals(
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-12 22:23:24"), columnInfo, tzLosAngeles),
             new Date(
                 LocalDate.of(2020, 1, 12)
@@ -173,7 +175,7 @@ public class ClickHouseSQLDateParserTest {
                     .toInstant()
                     .toEpochMilli()));
         assertEquals(
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-12 22:23:24"), columnInfo, tzBerlin),
             new Date(
                 LocalDate.of(2020, 1, 12)
@@ -181,7 +183,7 @@ public class ClickHouseSQLDateParserTest {
                     .toInstant()
                     .toEpochMilli()));
         assertNull(
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("0000-00-00 00:00:00"), columnInfo, null));
     }
 
@@ -197,7 +199,7 @@ public class ClickHouseSQLDateParserTest {
             ClickHouseColumnInfo.parse(dataType.name(), "col");
 
         assertEquals(
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString(
                     String.valueOf(instant.getEpochSecond())),
                 columnInfo,
@@ -209,7 +211,7 @@ public class ClickHouseSQLDateParserTest {
                     .toEpochMilli()));
 
         assertEquals(
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString(
                     String.valueOf(instant.getEpochSecond())),
                     columnInfo,
@@ -221,7 +223,7 @@ public class ClickHouseSQLDateParserTest {
                     .toEpochMilli()));
 
         try {
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("ABC"), columnInfo, null);
             fail();
         } catch (ClickHouseException che) {
@@ -229,7 +231,7 @@ public class ClickHouseSQLDateParserTest {
         }
 
         try {
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("3.14159265359"), columnInfo, null);
             fail();
         } catch (ClickHouseException che) {
@@ -237,7 +239,7 @@ public class ClickHouseSQLDateParserTest {
         }
 
         assertNull(
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString(String.valueOf(0)), columnInfo, tzBerlin));
     }
 
@@ -247,7 +249,7 @@ public class ClickHouseSQLDateParserTest {
             ClickHouseColumnInfo.parse(
                 ClickHouseDataType.Int64.name(), "col");
         assertEquals(
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString(
                     String.valueOf(-386384400)),
                 columnInfo,
@@ -266,7 +268,7 @@ public class ClickHouseSQLDateParserTest {
                 ClickHouseDataType.Unknown.name(),
                 "col");
         assertEquals(
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-13"), columnInfo, null),
             new Date(
                 LocalDate.of(2020, 1, 13)
@@ -274,14 +276,14 @@ public class ClickHouseSQLDateParserTest {
                     .toInstant()
                     .toEpochMilli()));
         try {
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-1-13"), columnInfo, null);
             fail();
         } catch (ClickHouseException che) {
             // bad format
         }
         try {
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-42"), columnInfo, null);
             fail();
         } catch (ClickHouseException che) {
@@ -296,7 +298,7 @@ public class ClickHouseSQLDateParserTest {
                 ClickHouseDataType.Unknown.name(),
                 "col");
         assertEquals(
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-13 22:23:24"), columnInfo, null),
             new Date(
                 LocalDate.of(2020, 1, 13)
@@ -304,14 +306,14 @@ public class ClickHouseSQLDateParserTest {
                     .toInstant()
                     .toEpochMilli()));
         try {
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-1-13 22:23:24"), columnInfo, null);
             fail();
         } catch (ClickHouseException che) {
             // bad format
         }
         try {
-            ClickHouseSQLDateParser.getInstance().parse(
+            parser.parse(
                 ByteFragment.fromString("2020-01-42 22:23:24"), columnInfo, null);
             fail();
         } catch (ClickHouseException che) {
