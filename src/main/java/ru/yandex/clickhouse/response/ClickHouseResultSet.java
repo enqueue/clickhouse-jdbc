@@ -279,7 +279,7 @@ public class ClickHouseResultSet extends AbstractResultSet {
     }
 
     @Override
-    public byte[] getBytes(String column) {
+    public byte[] getBytes(String column) throws SQLException {
         return getBytes(findColumn(column));
     }
 
@@ -310,7 +310,7 @@ public class ClickHouseResultSet extends AbstractResultSet {
     }
 
     @Override
-    public byte getByte(String column) {
+    public byte getByte(String column) throws SQLException {
         return getByte(findColumn(column));
     }
 
@@ -640,14 +640,19 @@ public class ClickHouseResultSet extends AbstractResultSet {
 
     // 1-based index in column list
     @Override
-    public int findColumn(String column) {
+    public int findColumn(String column) throws SQLException {
+        if (column == null || column.isEmpty()) {
+            throw new ClickHouseUnknownException(
+                "column name required", null);
+        }
         for (int i = 0; i < columns.size(); i++) {
-            if (column.equals(columns.get(i).getColumnName())) {
+            if (column.equalsIgnoreCase(columns.get(i).getColumnName())) {
                 return i+1;
             }
         }
-        // TODO Java8
-        throw new RuntimeException("no column " + column + " in columns list " + getColumnNames());
+        throw new ClickHouseUnknownException(
+            "no column '" + column + "' in columns list " + getColumnNames(),
+            null);
     }
 
     private ByteFragment getValue(int colNum) {

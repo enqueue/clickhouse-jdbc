@@ -16,6 +16,7 @@ import java.sql.Ref;
 import java.sql.ResultSet;
 import java.sql.ResultSetMetaData;
 import java.sql.RowId;
+import java.sql.SQLException;
 import java.sql.SQLXML;
 import java.sql.Struct;
 import java.sql.Time;
@@ -545,6 +546,48 @@ public class ClickHouseResultSetTest {
                 clazz.isInstance(o),
                 "type: " + jdbcType.toString() + " clazz: " + clazz.getName() +
                     " vs. object: " + o.getClass().getName());
+        }
+    }
+
+    @Test
+    public void testFindColumn() throws Exception {
+
+        /*
+         * See JDBC 4.2 spec, 15.2.3:
+         *
+         * - case insensitive
+         * - duplicates: return first
+         * - throw SQLException if not found
+         */
+
+        String response =
+            "col_a\tcol_b\tcol_a\tCOL_C\n" +
+            "UInt8\tUInt8\tUInt8\tUInt8\n" +
+            "1\t1\t1\t1\n";
+        ByteArrayInputStream is = new ByteArrayInputStream(response.getBytes("UTF-8"));
+        ResultSet rs = buildResultSet(is, 1024, "db", "table", false, null, null, props);
+        assertEquals(rs.findColumn("col_a"), 1);
+        assertEquals(rs.findColumn("COL_A"), 1);
+        assertEquals(rs.findColumn("Col_A"), 1);
+        assertEquals(rs.findColumn("col_b"), 2);
+        assertEquals(rs.findColumn("col_c"), 4);
+        try {
+            rs.findColumn("col_d");
+            fail();
+        } catch (SQLException sqle) {
+            // expected
+        }
+        try {
+            rs.findColumn(null);
+            fail();
+        } catch (SQLException sqle) {
+            // expected
+        }
+        try {
+            rs.findColumn("");
+            fail();
+        } catch (SQLException sqle) {
+            // expected
         }
     }
 
