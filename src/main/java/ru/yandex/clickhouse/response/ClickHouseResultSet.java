@@ -660,13 +660,17 @@ public class ClickHouseResultSet extends AbstractResultSet {
         return columns.get(colNum - 1);
     }
 
+    @SuppressWarnings("unchecked")
     @Override
     public <T> T getObject(int columnIndex, Class<T> type) throws SQLException {
         TimeZone tz = Date.class.equals(type)
             ? dateTimeZone
             : dateTimeTimeZone;
-        return ClickHouseValueParser.getParser(type)
-            .parse(getValue(columnIndex), getColumnInfo(columnIndex), tz);
+        ClickHouseColumnInfo columnInfo = getColumnInfo(columnIndex);
+        return columnInfo.isArray()
+            ? (T) getArray(columnIndex)
+            : ClickHouseValueParser.getParser(type)
+                .parse(getValue(columnIndex), getColumnInfo(columnIndex), tz);
     }
 
     @Override

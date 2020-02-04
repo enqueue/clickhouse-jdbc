@@ -47,6 +47,7 @@ public abstract class ClickHouseValueParser<T> {
         register(LocalDateTime.class, ClickHouseLocalDateTimeParser.getInstance());
         register(LocalTime.class, ClickHouseLocalTimeParser.getInstance());
         register(Long.class, Long::decode, Long.valueOf(0L));
+        register(Object.class, s -> s);
         register(OffsetDateTime.class, ClickHouseOffsetDateTimeParser.getInstance());
         register(OffsetTime.class, ClickHouseOffsetTimeParser.getInstance());
         register(Short.class, Short::decode, Short.valueOf((short) 0));

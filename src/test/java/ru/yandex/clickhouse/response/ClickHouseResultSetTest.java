@@ -591,6 +591,54 @@ public class ClickHouseResultSetTest {
         }
     }
 
+    // this test checks mapping of SQL type to Java class
+    // according to spec appendix table B-1
+    @Test
+    public void testJDBCTableB1() throws Exception {
+        String testData = ClickHouseTypesTestData.buildTestString();
+        ByteArrayInputStream is = new ByteArrayInputStream(testData.getBytes("UTF-8"));
+        ResultSet rs = buildResultSet(is, testData.length(), "db", "table", false, null,
+            TimeZone.getTimeZone("UTC"), props);
+        rs.next();
+        ResultSetMetaData meta = rs.getMetaData();
+        for (int i = 1; i <= meta.getColumnCount(); i++) {
+            if (meta.isNullable(i) == ResultSetMetaData.columnNullable) {
+                continue;
+            }
+            JDBCType jdbcType = JDBCType.valueOf(meta.getColumnType(i));
+            Class<?> clazz = jdbcMappingTableB1().get(jdbcType);
+            switch (clazz.getName()) {
+                case "byte":
+                    rs.getByte(i);
+                    break;
+                case "short":
+                    rs.getShort(i);
+                    break;
+                case "int":
+                    rs.getInt(i);
+                    break;
+                case "long":
+                    rs.getLong(i);
+                    break;
+                case "float":
+                    rs.getFloat(i);
+                    break;
+                case "double":
+                    rs.getDouble(i);
+                    break;
+                case "boolean":
+                    rs.getBoolean(i);
+                    break;
+                default:
+                    Object o = rs.getObject(i, clazz);
+                    if (o != null) {
+                        assertTrue(clazz.isInstance(o));
+                    }
+                    break;
+            }
+        }
+    }
+
     private static ClickHouseResultSet buildResultSet(InputStream is, int bufferSize, String db,
         String table, boolean usesWithTotals, ClickHouseStatement statement, TimeZone timezone,
         ClickHouseProperties properties)
@@ -714,6 +762,46 @@ public class ClickHouseResultSetTest {
         map.put(JDBCType.REAL,          Float.class);
         map.put(JDBCType.FLOAT,         Double.class); // sic
         map.put(JDBCType.DOUBLE,        Double.class);
+        map.put(JDBCType.BINARY,        byte[].class);
+        map.put(JDBCType.VARBINARY,     byte[].class);
+        map.put(JDBCType.LONGVARBINARY, byte[].class);
+        map.put(JDBCType.DATE,          Date.class);
+        map.put(JDBCType.TIME,          Time.class);
+        map.put(JDBCType.TIMESTAMP,     Timestamp.class);
+        map.put(JDBCType.DISTINCT,      Object.class);
+        map.put(JDBCType.CLOB,          Clob.class);
+        map.put(JDBCType.BLOB,          Blob.class);
+        map.put(JDBCType.ARRAY,         Array.class);
+        map.put(JDBCType.STRUCT,        Struct.class);
+        map.put(JDBCType.REF,           Ref.class);
+        map.put(JDBCType.DATALINK,      URL.class);
+        map.put(JDBCType.JAVA_OBJECT,   Object.class);
+        map.put(JDBCType.ROWID,         RowId.class);
+        map.put(JDBCType.NCHAR,         String.class);
+        map.put(JDBCType.NVARCHAR,      String.class);
+        map.put(JDBCType.LONGNVARCHAR,  String.class);
+        map.put(JDBCType.NCLOB,         NClob.class);
+        map.put(JDBCType.SQLXML,        SQLXML.class);
+        map.put(JDBCType.OTHER,         Object.class);
+        return map;
+    }
+
+    private static Map<JDBCType, Class<?>> jdbcMappingTableB1() {
+        Map<JDBCType, Class<?>> map = new HashMap<>();
+        map.put(JDBCType.CHAR,          String.class);
+        map.put(JDBCType.VARCHAR,       String.class);
+        map.put(JDBCType.LONGVARCHAR,   String.class);
+        map.put(JDBCType.NUMERIC,       BigDecimal.class);
+        map.put(JDBCType.DECIMAL,       BigDecimal.class);
+        map.put(JDBCType.BIT,           boolean.class);
+        map.put(JDBCType.BOOLEAN,       boolean.class);
+        map.put(JDBCType.TINYINT,       byte.class);
+        map.put(JDBCType.SMALLINT,      short.class);
+        map.put(JDBCType.INTEGER,       int.class);
+        map.put(JDBCType.BIGINT,        long.class);
+        map.put(JDBCType.REAL,          float.class);
+        map.put(JDBCType.FLOAT,         double.class); // sic
+        map.put(JDBCType.DOUBLE,        double.class);
         map.put(JDBCType.BINARY,        byte[].class);
         map.put(JDBCType.VARBINARY,     byte[].class);
         map.put(JDBCType.LONGVARBINARY, byte[].class);

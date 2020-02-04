@@ -160,6 +160,10 @@ public final class ClickHouseColumnInfo {
         return arrayLevel;
     }
 
+    public boolean isArray() {
+        return arrayLevel > 0;
+    }
+
     public ClickHouseDataType getArrayBaseType() {
         return arrayBaseType;
     }
