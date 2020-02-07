@@ -149,7 +149,7 @@ public abstract class ClickHouseValueParser<T> {
      *            value as returned from the server
      * @param columnInfo
      *            meta data of the column
-     * @param resultTimeZone
+     * @param timeZone
      *            time zone to be used when parsing dates or times
      * @return the result of parsing {@code value} as an object of type
      *         {@code T}
@@ -157,7 +157,7 @@ public abstract class ClickHouseValueParser<T> {
      *             if the value cannot be parsed under the given circumstances
      */
     public abstract T parse(ByteFragment value, ClickHouseColumnInfo columnInfo,
-        TimeZone resultTimeZone) throws SQLException;
+        TimeZone timeZone) throws SQLException;
 
     /**
      * Parses the supplied byte fragment {@code value} using meta data contained

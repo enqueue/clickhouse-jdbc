@@ -22,25 +22,40 @@ import java.sql.Struct;
 import java.sql.Time;
 import java.sql.Timestamp;
 import java.sql.Types;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.Calendar;
+import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.TimeZone;
 
+import org.mockito.Mockito;
 import org.testng.Assert;
+import org.testng.annotations.BeforeMethod;
 import org.testng.annotations.DataProvider;
 import org.testng.annotations.Test;
 
 import ru.yandex.clickhouse.ClickHouseStatement;
 import ru.yandex.clickhouse.settings.ClickHouseProperties;
 
+import static org.testng.Assert.assertEquals;
 import static org.testng.Assert.assertFalse;
 import static org.testng.Assert.assertNotNull;
 import static org.testng.Assert.assertNull;
 import static org.testng.Assert.assertTrue;
 import static org.testng.Assert.fail;
-import static org.testng.AssertJUnit.assertEquals;
 
 public class ClickHouseResultSetTest {
+
+    private ClickHouseProperties props;
+
+    @BeforeMethod
+    public void setUp() {
+        props = Mockito.mock(ClickHouseProperties.class);
+    }
 
     @DataProvider(name = "longArrays")
     public Object[][] longArrays() {
@@ -61,8 +76,6 @@ public class ClickHouseResultSetTest {
         );
     }
 
-    ClickHouseProperties props = new ClickHouseProperties();
-    TimeZone tz = TimeZone.getDefault();
 
     @Test
     public void withoutTotals() throws Exception {
@@ -637,6 +650,51 @@ public class ClickHouseResultSetTest {
                     break;
             }
         }
+    }
+
+    @Test
+    public void testGetDateCalendarJVMTime() throws Exception {
+        String testData = "column\nDateTime\n2020-02-08 01:02:03";
+        ByteArrayInputStream is = new ByteArrayInputStream(testData.getBytes("UTF-8"));
+        ResultSet rs = buildResultSet(is, testData.length(), "db", "table", false, null,
+            TimeZone.getTimeZone("UTC"), props);
+        rs.next();
+        Calendar cal = new GregorianCalendar();
+        cal.setTimeZone(TimeZone.getTimeZone("America/Los_Angeles"));
+        Date d = rs.getDate(1, cal);
+        assertEquals(d.toLocalDate(), LocalDate.of(2020, 2, 8));
+        assertEquals(
+            d.getTime() / 1000,
+            ZonedDateTime
+                .of(
+                    LocalDate.of(2020, 2, 8),
+                    LocalTime.MIDNIGHT,
+                    ZoneId.systemDefault())
+                .toEpochSecond());
+    }
+
+    @Test
+    public void testGetDateCalendarServerTime() throws Exception {
+        Mockito
+            .when(props.isUseServerTimeZoneForDates())
+            .thenReturn(Boolean.TRUE);
+        String testData = "column\nDateTime\n2020-02-08 01:02:03";
+        ByteArrayInputStream is = new ByteArrayInputStream(testData.getBytes("UTF-8"));
+        ResultSet rs = buildResultSet(is, testData.length(), "db", "table", false, null,
+            TimeZone.getTimeZone("UTC"), props);
+        rs.next();
+        Calendar cal = new GregorianCalendar();
+        cal.setTimeZone(TimeZone.getTimeZone("America/Los_Angeles"));
+        Date d = rs.getDate(1, cal);
+        assertEquals(d.toLocalDate(), LocalDate.of(2020, 2, 8));
+        assertEquals(
+            d.getTime() / 1000,
+            ZonedDateTime
+                .of(
+                    LocalDate.of(2020, 2, 8),
+                    LocalTime.MIDNIGHT,
+                    ZoneId.of("UTC"))
+                .toEpochSecond());
     }
 
     private static ClickHouseResultSet buildResultSet(InputStream is, int bufferSize, String db,

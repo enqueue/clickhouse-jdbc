@@ -41,6 +41,7 @@ abstract class ClickHouseDateValueParser<T> extends ClickHouseValueParser<T> {
     public T parse(ByteFragment value, ClickHouseColumnInfo columnInfo,
         TimeZone timeZone) throws ClickHouseException
     {
+
         if (value.isNull()) {
             return null;
         }

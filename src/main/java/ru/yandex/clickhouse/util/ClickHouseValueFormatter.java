@@ -115,7 +115,10 @@ public final class ClickHouseValueFormatter {
     }
 
     public static String formatTime(Time time, TimeZone timeZone) {
-        return TIME_FORMATTER.format(Instant.ofEpochMilli(time.getTime()).atZone(timeZone.toZoneId()).toLocalTime());
+        return TIME_FORMATTER.format(
+            Instant.ofEpochMilli(time.getTime())
+                .atZone(timeZone.toZoneId())
+                .toLocalTime());
         // getDateTimeFormat().setTimeZone(timeZone);
         // return getDateTimeFormat().format(time);
     }

@@ -295,13 +295,7 @@ public class ClickHouseResultSet extends AbstractResultSet {
 
     @Override
     public Timestamp getTimestamp(int columnIndex, Calendar cal) throws SQLException {
-        TimeZone tz = cal.getTimeZone() != null
-            ? cal.getTimeZone()
-            : dateTimeTimeZone;
-        return ClickHouseValueParser.getParser(Timestamp.class).parse(
-            getValue(columnIndex),
-            getColumnInfo(columnIndex),
-            tz);
+        return getTimestamp(columnIndex);
     }
 
     @Override
@@ -519,11 +513,21 @@ public class ClickHouseResultSet extends AbstractResultSet {
     }
 
     @Override
+    public Date getDate(int columnIndex, Calendar calendar) throws SQLException {
+        return getDate(columnIndex);
+    }
+
+    @Override
     public Time getTime(int columnIndex) throws SQLException {
         return ClickHouseValueParser.getParser(Time.class).parse(
             getValue(columnIndex),
             getColumnInfo(columnIndex),
             dateTimeTimeZone);
+    }
+
+    @Override
+    public Time getTime(int columnIndex, Calendar calendar) throws SQLException {
+        return getTime(columnIndex);
     }
 
     @Override
